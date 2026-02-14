@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Daraz Order Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .app-container { max-width: 100%; min-height: 100vh; background: #f5f7fa; }
+        @media (min-width: 768px) { .app-container { max-width: 1400px; margin: 20px auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); min-height: calc(100vh - 40px); } }
+        
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .header h1 { font-size: 1.5em; font-weight: 700; }
+        .header p { font-size: 0.9em; opacity: 0.9; margin-top: 5px; }
+        
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 1000; padding-bottom: env(safe-area-inset-bottom, 10px); }
+        @media (min-width: 768px) { .bottom-nav { position: static; background: #f8f9fa; border-bottom: 2px solid #dee2e6; box-shadow: none; padding: 0; } }
+        
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 5px; background: none; border: none; cursor: pointer; color: #666; font-size: 11px; transition: all 0.3s; }
+        @media (min-width: 768px) { .nav-item { flex-direction: row; padding: 15px 20px; font-size: 14px; font-weight: 600; gap: 8px; } }
+        .nav-item.active { color: #667eea; }
+        @media (min-width: 768px) { .nav-item.active { background: white; border-bottom: 3px solid #667eea; } }
+        .nav-icon { font-size: 20px; margin-bottom: 4px; }
+        @media (min-width: 768px) { .nav-icon { font-size: 16px; margin-bottom: 0; } }
+        
+        .content-area { padding: 20px; padding-bottom: 100px; }
+        @media (min-width: 768px) { .content-area { padding: 30px; padding-bottom: 30px; } }
+        
+        .page { display: none; animation: fadeIn 0.3s ease-in; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 25px; }
+        @media (min-width: 768px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+        
+        .stat-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 4px solid #667eea; }
+        .stat-card h3 { font-size: 0.75em; color: #666; margin-bottom: 8px; text-transform: uppercase; }
+        .stat-card .value { font-size: 1.5em; font-weight: bold; color: #333; }
+        
+        .btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; justify-content: center; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
+        .btn-danger { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; }
+        .btn-small { padding: 8px 16px; font-size: 12px; }
+        
+        .fab { position: fixed; bottom: 90px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-size: 24px; box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4); cursor: pointer; z-index: 999; display: flex; align-items: center; justify-content: center; }
+        @media (min-width: 768px) { .fab { display: none; } }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; overflow-y: auto; }
+        .modal.active { display: flex; align-items: flex-end; justify-content: center; }
+        @media (min-width: 768px) { .modal.active { align-items: center; } }
+        
+        .modal-content { background: white; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 25px; }
+        @media (min-width: 768px) { .modal-content { border-radius: 20px; } }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; }
+        .close-btn { background: none; border: none; font-size: 28px; color: #999; cursor: pointer; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 16px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        
+        .form-row { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 768px) { .form-row { grid-template-columns: 1fr 1fr; } }
+        
+        .table-wrapper { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+        th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; text-align: left; font-weight: 600; }
+        td { padding: 12px 15px; border-bottom: 1px solid #eee; }
+        
+        .mobile-cards { display: flex; flex-direction: column; gap: 15px; }
+        .data-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 4px solid #667eea; }
+        .data-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px; }
+        .data-card-title { font-weight: bold; color: #333; font-size: 1.1em; }
+        
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-delivered { background: #d4edda; color: #155724; }
+        
+        .search-box { width: 100%; padding: 14px 20px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 16px; margin-bottom: 20px; }
+        
+        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: white; padding: 15px 25px; border-radius: 10px; opacity: 0; transition: all 0.3s; z-index: 2500; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        
+        @media (max-width: 767px) { .desktop-only { display: none !important; } }
+        @media (min-width: 768px) { .mobile-only { display: none !important; } }
+        
+        .summary-section { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        @media (min-width: 768px) { .summary-grid { grid-template-columns: repeat(4, 1fr); } }
+        .summary-item { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 10px; }
+        .summary-item h4 { font-size: 0.8em; color: #666; margin-bottom: 5px; }
+        .summary-item .amount { font-size: 1.3em; font-weight: bold; color: #333; }
+        
+        .product-management { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .add-product-form { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .add-product-form input { flex: 1; min-width: 120px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; }
+        
+        .profit-display { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 15px; border-radius: 12px; margin-top: 15px; text-align: center; }
+        .profit-display.negative { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+        .profit-display .amount { font-size: 1.8em; font-weight: bold; }
+        
+        .low-stock { border-left-color: #dc3545 !important; }
+        .good-stock { border-left-color: #28a745 !important; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>📦 Daraz Order Manager</h1>
+            <p>Complete Business Solution</p>
+        </header>
+
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="showPage('dashboard')">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-item" onclick="showPage('sales')">
+                <span class="nav-icon">💰</span>
+                <span>Sales</span>
+            </button>
+            <button class="nav-item" onclick="showPage('purchases')">
+                <span class="nav-icon">🛒</span>
+                <span>Purchases</span>
+            </button>
+            <button class="nav-item" onclick="showPage('inventory')">
+                <span class="nav-icon">📦</span>
+                <span>Inventory</span>
+            </button>
+            <button class="nav-item" onclick="showPage('products')">
+                <span class="nav-icon">🏷️</span>
+                <span>Products</span>
+            </button>
+            <button class="nav-item" onclick="showPage('summary')">
+                <span class="nav-icon">📈</span>
+                <span>Summary</span>
+            </button>
+        </nav>
+
+        <main class="content-area">
+            <!-- Dashboard -->
+            <div id="dashboard" class="page active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Sales</h3>
+                        <div class="value" id="totalSales">₨0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Purchases</h3>
+                        <div class="value" id="totalPurchases">₨0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Profit</h3>
+                        <div class="value" id="totalProfit">₨0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Orders</h3>
+                        <div class="value" id="totalOrders">0</div>
+                    </div>
+                </div>
+
+                <div class="summary-section">
+                    <h3 style="margin-bottom: 15px;">📅 Today's Performance</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <h4>Today's Sales</h4>
+                            <div class="amount" id="todaySales">₨0</div>
+                        </div>
+                        <div class="summary-item">
+                            <h4>Today's Orders</h4>
+                            <div class="amount" id="todayOrders">0</div>
+                        </div>
+                        <div class="summary-item">
+                            <h4>Pending</h4>
+                            <div class="amount" id="pendingOrders">0</div>
+                        </div>
+                        <div class="summary-item">
+                            <h4>Current Stock</h4>
+                            <div class="amount" id="currentStock">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-section">
+                    <h3 style="margin-bottom: 15px;">🚨 Low Stock Alert</h3>
+                    <div id="lowStockAlert">
+                        <div class="empty-state">
+                            <div style="font-size: 48px; margin-bottom: 15px;">📦</div>
+                            <p>All products are well stocked</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales -->
+            <div id="sales" class="page">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Sales Orders</h2>
+                    <button class="btn btn-primary" onclick="openModal('salesModal')">+ Add Sale</button>
+                </div>
+                <input type="text" class="search-box" placeholder="Search sales..." id="searchSales">
+                <div class="mobile-only mobile-cards" id="salesMobileCards"></div>
+                <div class="desktop-only table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Product</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Purchases -->
+            <div id="purchases" class="page">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Purchase Orders</h2>
+                    <button class="btn btn-success" onclick="openModal('purchaseModal')">+ Add Purchase</button>
+                </div>
+                <input type="text" class="search-box" placeholder="Search purchases..." id="searchPurchases">
+                <div class="mobile-only mobile-cards" id="purchasesMobileCards"></div>
+                <div class="desktop-only table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Product</th>
+                                <th>Supplier</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchasesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Inventory -->
+            <div id="inventory" class="page">
+                <h2 style="margin-bottom: 15px;">Inventory Management</h2>
+                <div class="mobile-only mobile-cards" id="inventoryMobileCards"></div>
+                <div class="desktop-only table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Current Stock</th>
+                                <th>Status</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Products -->
+            <div id="products" class="page">
+                <h2 style="margin-bottom: 15px;">Product Management</h2>
+                <div class="product-management">
+                    <h4 style="margin-bottom: 10px;">Add New Product</h4>
+                    <div class="add-product-form">
+                        <input type="text" id="newProductName" placeholder="Product name">
+                        <input type="number" id="newProductPrice" placeholder="Sale price">
+                        <button class="btn btn-primary" onclick="addProduct()">Add</button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Sale Price</th>
+                                <th>Stock</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div id="summary" class="page">
+                <h2 style="margin-bottom: 15px;">Financial Summary</h2>
+                <div class="summary-section">
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <h4>Total Revenue</h4>
+                            <div class="amount" id="summaryRevenue">₨0</div>
+                        </div>
+                        <div class="summary-item">
+                            <h4>Total Costs</h4>
+                            <div class="amount" id="summaryCosts">₨0</div>
+                        </div>
+                        <div class="summary-item">
+                            <h4>Net Profit</h4>
+                            <div class="amount" id="summaryProfit">₨0</div>
+                        </div>
+                        <div class="summary-item">
+                            <h4>Margin</h4>
+                            <div class="amount" id="summaryMargin">0%</div>
+                        </div>
+                    </div>
+                    <div class="profit-display" id="profitDisplay">
+                        <h4 style="font-size: 0.9em; margin-bottom: 5px; opacity: 0.9;">Net Profit</h4>
+                        <div class="amount" id="profitAmount">₨0</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <button class="fab mobile-only" onclick="openModal('salesModal')">+</button>
+
+        <!-- Sales Modal -->
+        <div id="salesModal" class="modal" onclick="if(event.target===this)closeModal('salesModal')">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add New Sale</h2>
+                    <button class="close-btn" onclick="closeModal('salesModal')">&times;</button>
+                </div>
+                <form onsubmit="saveSale(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Order ID</label>
+                            <input type="text" id="saleOrderId" required placeholder="e.g., ORD-001">
+                        </div>
+                        <div class="form-group">
+                            <label>Product</label>
+                            <select id="saleProduct" required onchange="updateSalePrice()">
+                                <option value="">Select Product</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Customer Name</label>
+                            <input type="text" id="saleCustomer" required placeholder="Customer name">
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="saleQuantity" required min="1" value="1" onchange="calculateSaleTotal()">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Unit Price</label>
+                            <input type="number" id="salePrice" required min="0" onchange="calculateSaleTotal()">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Amount</label>
+                            <input type="number" id="saleTotal" readonly style="background: #f8f9fa;">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="saleStatus" required>
+                                <option value="pending">Pending</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="returned">Returned</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="saleDate" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Save Sale</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Purchase Modal -->
+        <div id="purchaseModal" class="modal" onclick="if(event.target===this)closeModal('purchaseModal')">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add New Purchase</h2>
+                    <button class="close-btn" onclick="closeModal('purchaseModal')">&times;</button>
+                </div>
+                <form onsubmit="savePurchase(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Order ID</label>
+                            <input type="text" id="purchaseOrderId" required placeholder="e.g., PUR-001">
+                        </div>
+                        <div class="form-group">
+                            <label>Product</label>
+                            <select id="purchaseProduct" required>
+                                <option value="">Select Product</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Supplier Name</label>
+                            <input type="text" id="purchaseSupplier" required placeholder="Supplier name">
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="purchaseQuantity" required min="1" value="1" onchange="calculatePurchaseTotal()">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Unit Cost</label>
+                            <input type="number" id="purchasePrice" required min="0" onchange="calculatePurchaseTotal()">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Amount</label>
+                            <input type="number" id="purchaseTotal" readonly style="background: #f8f9fa;">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="purchaseStatus" required>
+                                <option value="pending">Pending</option>
+                                <option value="delivered">Delivered</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="purchaseDate" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success" style="width: 100%;">Save Purchase</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script>
+        let sales = JSON.parse(localStorage.getItem('daraz_sales')) || [];
+        let purchases = JSON.parse(localStorage.getItem('daraz_purchases')) || [];
+        let products = JSON.parse(localStorage.getItem('daraz_products')) || [{ id: 1, name: 'Sample Product', price: 1000, stock: 10 }];
+        let inventory = JSON.parse(localStorage.getItem('daraz_inventory')) || {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDashboard();
+            loadProducts();
+            renderSales();
+            renderPurchases();
+            renderInventory();
+            renderProducts();
+            updateSummary();
+            setupDates();
+        });
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            event.target.closest('.nav-item').classList.add('active');
+            if (pageId === 'dashboard') updateDashboard();
+            if (pageId === 'summary') updateSummary();
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function updateDashboard() {
+            const totalSales = sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+            const totalPurchases = purchases.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
+            const profit = totalSales - totalPurchases;
+            
+            document.getElementById('totalSales').textContent = '₨' + totalSales.toLocaleString();
+            document.getElementById('totalPurchases').textContent = '₨' + totalPurchases.toLocaleString();
+            document.getElementById('totalProfit').textContent = '₨' + profit.toLocaleString();
+            document.getElementById('totalOrders').textContent = sales.length;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todaySales = sales.filter(s => s.date === today);
+            const todayAmount = todaySales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+            
+            document.getElementById('todaySales').textContent = '₨' + todayAmount.toLocaleString();
+            document.getElementById('todayOrders').textContent = todaySales.length;
+            document.getElementById('pendingOrders').textContent = sales.filter(s => s.status === 'pending').length;
+            
+            const totalStock = Object.values(inventory).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
+            document.getElementById('currentStock').textContent = totalStock;
+            
+            const lowStock = products.filter(p => (inventory[p.id] || 0) < 5);
+            const alertDiv = document.getElementById('lowStockAlert');
+            if (lowStock.length > 0) {
+                alertDiv.innerHTML = lowStock.map(p => `
+                    <div class="data-card low-stock" style="margin-bottom: 10px;">
+                        <div class="data-card-header">
+                            <div>
+                                <div class="data-card-title">${p.name}</div>
+                                <div style="color: #666; font-size: 0.9em;">Only ${inventory[p.id] || 0} units left</div>
+                            </div>
+                            <span class="status-badge status-pending">Low Stock</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                alertDiv.innerHTML = `<div class="empty-state"><div style="font-size: 48px; margin-bottom: 15px;">📦</div><p>All products are well stocked</p></div>`;
+            }
+        }
+
+        function loadProducts() {
+            ['saleProduct', 'purchaseProduct'].forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    select.innerHTML = '<option value="">Select Product</option>' +
+                        products.map(p => `<option value="${p.id}" data-price="${p.price}">${p.name}</option>`).join('');
+                }
+            });
+        }
+
+        function addProduct() {
+            const name = document.getElementById('newProductName').value;
+            const price = parseFloat(document.getElementById('newProductPrice').value);
+            if (!name || !price) { showToast('Please fill all fields'); return; }
+            
+            const newProduct = { id: Date.now(), name: name, price: price, stock: 0 };
+            products.push(newProduct);
+            inventory[newProduct.id] = 0;
+            saveData();
+            
+            document.getElementById('newProductName').value = '';
+            document.getElementById('newProductPrice').value = '';
+            loadProducts();
+            renderProducts();
+            renderInventory();
+            showToast('Product added successfully');
+        }
+
+        function renderProducts() {
+            document.getElementById('productsTableBody').innerHTML = products.map(p => `
+                <tr>
+                    <td>${p.name}</td>
+                    <td>₨${p.price.toLocaleString()}</td>
+                    <td>${inventory[p.id] || 0}</td>
+                    <td><button class="btn btn-danger btn-small" onclick="deleteProduct(${p.id})">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteProduct(id) {
+            if (!confirm('Are you sure?')) return;
+            products = products.filter(p => p.id !== id);
+            delete inventory[id];
+            saveData();
+            loadProducts();
+            renderProducts();
+            renderInventory();
+            showToast('Product deleted');
+        }
+
+        function updateSalePrice() {
+            const select = document.getElementById('saleProduct');
+            document.getElementById('salePrice').value = select.options[select.selectedIndex].dataset.price || 0;
+            calculateSaleTotal();
+        }
+
+        function calculateSaleTotal() {
+            const qty = parseInt(document.getElementById('saleQuantity').value) || 0;
+            const price = parseFloat(document.getElementById('salePrice').value) || 0;
+            document.getElementById('saleTotal').value = qty * price;
+        }
+
+        function saveSale(e) {
+            e.preventDefault();
+            const productId = parseInt(document.getElementById('saleProduct').value);
+            const quantity = parseInt(document.getElementById('saleQuantity').value);
+            
+            if ((inventory[productId] || 0) < quantity) { showToast('Insufficient stock!'); return; }
+            
+            const sale = {
+                id: Date.now(),
+                orderId: document.getElementById('saleOrderId').value,
+                productId: productId,
+                productName: document.getElementById('saleProduct').options[document.getElementById('saleProduct').selectedIndex].text,
+                customer: document.getElementById('saleCustomer').value,
+                quantity: quantity,
+                price: parseFloat(document.getElementById('salePrice').value),
+                total: parseFloat(document.getElementById('saleTotal').value),
+                status: document.getElementById('saleStatus').value,
+                date: document.getElementById('saleDate').value
+            };
+            
+            sales.push(sale);
+            inventory[productId] = (inventory[productId] || 0) - quantity;
+            saveData();
+            closeModal('salesModal');
+            e.target.reset();
+            renderSales();
+            updateDashboard();
+            showToast('Sale saved successfully');
+        }
+
+        function renderSales() {
+            const html = sales.map(s => `
+                <tr>
+                    <td>${s.orderId}</td>
+                    <td>${s.productName}</td>
+                    <td>${s.customer}</td>
+                    <td>₨${parseFloat(s.total).toLocaleString()}</td>
+                    <td><span class="status-badge status-${s.status}">${s.status}</span></td>
+                    <td>${s.date}</td>
+                    <td><button class="btn btn-danger btn-small" onclick="deleteSale(${s.id})">Delete</button></td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('salesTableBody').innerHTML = html;
+            document.getElementById('salesMobileCards').innerHTML = sales.map(s => `
+                <div class="data-card">
+                    <div class="data-card-header">
+                        <div><div class="data-card-title">${s.orderId}</div><div style="color: #666; font-size: 0.9em;">${s.productName}</div></div>
+                        <span class="status-badge status-${s.status}">${s.status}</span>
+                    </div>
+                    <div style="margin: 10px 0;"><strong>Customer:</strong> ${s.customer}<br><strong>Amount:</strong> ₨${parseFloat(s.total).toLocaleString()}<br><strong>Date:</strong> ${s.date}</div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;"><button class="btn btn-danger btn-small" onclick="deleteSale(${s.id})">Delete</button></div>
+                </div>
+            `).join('');
+        }
+
+        function deleteSale(id) {
+            if (!confirm('Are you sure?')) return;
+            const sale = sales.find(s => s.id === id);
+            if (sale) inventory[sale.productId] = (inventory[sale.productId] || 0) + sale.quantity;
+            sales = sales.filter(s => s.id !== id);
+            saveData();
+            renderSales();
+            updateDashboard();
+            showToast('Sale deleted');
+        }
+
+        function calculatePurchaseTotal() {
+            const qty = parseInt(document.getElementById('purchaseQuantity').value) || 0;
+            const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+            document.getElementById('purchaseTotal').value = qty * price;
+        }
+
+        function savePurchase(e) {
+            e.preventDefault();
+            const productId = parseInt(document.getElementById('purchaseProduct').value);
+            const quantity = parseInt(document.getElementById('purchaseQuantity').value);
+            
+            const purchase = {
+                id: Date.now(),
+                orderId: document.getElementById('purchaseOrderId').value,
+                productId: productId,
+                productName: document.getElementById('purchaseProduct').options[document.getElementById('purchaseProduct').selectedIndex].text,
+                supplier: document.getElementById('purchaseSupplier').value,
+                quantity: quantity,
+                price: parseFloat(document.getElementById('purchasePrice').value),
+                total: parseFloat(document.getElementById('purchaseTotal').value),
+                status: document.getElementById('purchaseStatus').value,
+                date: document.getElementById('purchaseDate').value
+            };
+            
+            purchases.push(purchase);
+            inventory[productId] = (inventory[productId] || 0) + quantity;
+            saveData();
+            closeModal('purchaseModal');
+            e.target.reset();
+            renderPurchases();
+            renderInventory();
+            updateDashboard();
+            showToast('Purchase saved successfully');
+        }
+
+        function renderPurchases() {
+            const html = purchases.map(p => `
+                <tr>
+                    <td>${p.orderId}</td>
+                    <td>${p.productName}</td>
+                    <td>${p.supplier}</td>
+                    <td>₨${parseFloat(p.total).toLocaleString()}</td>
+                    <td><span class="status-badge status-${p.status}">${p.status}</span></td>
+                    <td>${p.date}</td>
+                    <td><button class="btn btn-danger btn-small" onclick="deletePurchase(${p.id})">Delete</button></td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('purchasesTableBody').innerHTML = html;
+            document.getElementById('purchasesMobileCards').innerHTML = purchases.map(p => `
+                <div class="data-card">
+                    <div class="data-card-header">
+                        <div><div class="data-card-title">${p.orderId}</div><div style="color: #666; font-size: 0.9em;">${p.productName}</div></div>
+                        <span class="status-badge status-${p.status}">${p.status}</span>
+                    </div>
+                    <div style="margin: 10px 0;"><strong>Supplier:</strong> ${p.supplier}<br><strong>Amount:</strong> ₨${parseFloat(p.total).toLocaleString()}<br><strong>Date:</strong> ${p.date}</div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;"><button class="btn btn-danger btn-small" onclick="deletePurchase(${p.id})">Delete</button></div>
+                </div>
+            `).join('');
+        }
+
+        function deletePurchase(id) {
+            if (!confirm('Are you sure?')) return;
+            const purchase = purchases.find(p => p.id === id);
+            if (purchase) inventory[purchase.productId] = Math.max(0, (inventory[purchase.productId] || 0) - purchase.quantity);
+            purchases = purchases.filter(p => p.id !== id);
+            saveData();
+            renderPurchases();
+            renderInventory();
+            updateDashboard();
+            showToast('Purchase deleted');
+        }
+
+        function renderInventory() {
+            const rows = products.map(p => {
+                const stock = inventory[p.id] || 0;
+                const status = stock < 5 ? 'Low' : 'Good';
+                const statusClass = stock < 5 ? 'low-stock' : 'good-stock';
+                return `
+                    <tr class="${statusClass}">
+                        <td>${p.name}</td>
+                        <td>${stock}</td>
+                        <td><span class="status-badge status-${stock < 5 ? 'pending' : 'delivered'}">${status}</span></td>
+                        <td>₨${(stock * p.price).toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('inventoryTableBody').innerHTML = rows;
+            document.getElementById('inventoryMobileCards').innerHTML = products.map(p => {
+                const stock = inventory[p.id] || 0;
+                const statusClass = stock < 5 ? 'low-stock' : 'good-stock';
+                return `
+                    <div class="data-card ${statusClass}">
+                        <div class="data-card-header">
+                            <div class="data-card-title">${p.name}</div>
+                            <span class="status-badge status-${stock < 5 ? 'pending' : 'delivered'}">${stock < 5 ? 'Low' : 'Good'}</span>
+                        </div>
+                        <div style="margin-top: 10px;"><strong>Stock:</strong> ${stock} units<br><strong>Value:</strong> ₨${(stock * p.price).toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateSummary() {
+            const totalRevenue = sales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+            const totalCosts = purchases.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
+            const profit = totalRevenue - totalCosts;
+            const margin = totalRevenue > 0 ? ((profit / totalRevenue) * 100).toFixed(1) : 0;
+            
+            document.getElementById('summaryRevenue').textContent = '₨' + totalRevenue.toLocaleString();
+            document.getElementById('summaryCosts').textContent = '₨' + totalCosts.toLocaleString();
+            document.getElementById('summaryProfit').textContent = '₨' + profit.toLocaleString();
+            document.getElementById('summaryMargin').textContent = margin + '%';
+            
+            const profitDisplay = document.getElementById('profitDisplay');
+            if (profit < 0) profitDisplay.classList.add('negative'); else profitDisplay.classList.remove('negative');
+            document.getElementById('profitAmount').textContent = '₨' + Math.abs(profit).toLocaleString();
+        }
+
+        function saveData() {
+            localStorage.setItem('daraz_sales', JSON.stringify(sales));
+            localStorage.setItem('daraz_purchases', JSON.stringify(purchases));
+            localStorage.setItem('daraz_products', JSON.stringify(products));
+            localStorage.setItem('daraz_inventory', JSON.stringify(inventory));
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function setupDates() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('saleDate').value = today;
+            document.getElementById('purchaseDate').value = today;
+        }
+    </script>
+</body>
+</html>
